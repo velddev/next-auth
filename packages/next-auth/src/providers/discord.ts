@@ -18,15 +18,34 @@ export interface DiscordProfile extends Record<string, any> {
   verified: boolean
 }
 
+export interface DiscordOAuthUserConfig<P extends DiscordProfile> extends OAuthUserConfig<P> {
+  /**
+   * Allow for additional scopes to be added to the authorization URL for your Discord login. The 
+   * default scopes are `identify` and `email` and are required for next-auth to work and will be 
+   * present next to your own scopes.
+   */
+  additionalScopes?: string[]
+}
+
+const DEFAULT_SCOPES = ["identify", "email"];
+
 export default function Discord<P extends DiscordProfile>(
-  options: OAuthUserConfig<P>
+  options: DiscordOAuthUserConfig<P>
 ): OAuthConfig<P> {
+  const { additionalScopes, ...innerOptions } = options
+  
+  const hasAdditionalScopes = Array.isArray(additionalScopes) && additionalScopes.length > 0
+  const scopes = hasAdditionalScopes 
+    ? additionalScopes.filter(s => DEFAULT_SCOPES.includes(s)) 
+    : []
+  const stringifiedScopes = scopes.concat(DEFAULT_SCOPES).join("+")
+  
   return {
     id: "discord",
     name: "Discord",
     type: "oauth",
     authorization:
-      "https://discord.com/api/oauth2/authorize?scope=identify+email",
+      `https://discord.com/api/oauth2/authorize?scope=${stringifiedScopes}`,
     token: "https://discord.com/api/oauth2/token",
     userinfo: "https://discord.com/api/users/@me",
     profile(profile) {
@@ -52,6 +71,6 @@ export default function Discord<P extends DiscordProfile>(
       bgDark: "#7289DA",
       textDark: "#fff",
     },
-    options,
+    options: innerOptions,
   }
 }
